@@ -23,8 +23,19 @@ char fname[256];
 File root, temp;
 File f;
 
-String last_file;
-bool delete_previous = false;
+bool wifi_flag;
+
+String ssid_i;
+String password_i;
+
+String inputMessage = "" ;
+String inputParam = "" ;
+    
+char ssid[100];
+char password[100];
+
+String input = "";
+String command = "";
 
 String serverIndex = "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
 "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>"
@@ -62,8 +73,8 @@ String serverIndex = "<script src='https://ajax.googleapis.com/ajax/libs/jquery/
 "});"
 "</script>";
 
-const char* ssid = "Shahrukh13";
-const char* password = "shahan2020";
+//const char* ssid = "Shahrukh13";
+//const char* password = "shahan2020";
 
 ESP32WebServer server(80);
 
@@ -193,7 +204,7 @@ void IRAM_ATTR buttonpressed()
 
 void setup(void){
   Serial.begin(115200);
-
+  EEPROM.begin(512);
   pinMode(35,INPUT);
   attachInterrupt(35, buttonpressed, FALLING);
 
@@ -219,7 +230,7 @@ void ShowGIF(char *name)
   
   if (gif.open(name, GIFOpenFile, GIFCloseFile, GIFReadFile, GIFSeekFile, GIFDraw))
   {
-    Serial.printf("Successfully opened GIF; Canvas size = %d x %d\n", gif.getCanvasWidth(), gif.getCanvasHeight());
+    //Serial.printf("Successfully opened GIF; Canvas size = %d x %d\n", gif.getCanvasWidth(), gif.getCanvasHeight());
     tft.startWrite(); // The TFT chip slect is locked low
     while (gif.playFrame(true, NULL))
     {
@@ -252,11 +263,17 @@ void loop(void){
   if(wifi_state && WiFi.status() != WL_CONNECTED)
   { 
     WiFi.mode(WIFI_STA);
+
+    ssid_i = read_String(0);
+    password_i = read_String(101);
+
+    ssid_i.toCharArray(ssid, ssid_i.length()+1);
+    password_i.toCharArray(password, password_i.length()+1);
     WiFi.begin(ssid, password);
     Serial.println("");
 
       // Wait for connection
-  while (WiFi.status() != WL_CONNECTED) {
+    while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
     tft.drawString("Connecting", 80, 0, 4);
@@ -281,7 +298,6 @@ void loop(void){
   },[](){
     HTTPUpload& upload = server.upload();
     if(opened == false){
-      delete_previous = true;
       opened = true;
         LITTLEFS.remove(fname);
         yield();
@@ -335,7 +351,7 @@ void loop(void){
         Serial.println("LITTLEFS Mount Failed");
         return;
     }
-    Serial.println( "SPIFFS-like write file to new path and delete it w/folders" );
+    //Serial.println( "SPIFFS-like write file to new path and delete it w/folders" );
 
 
     
@@ -351,8 +367,8 @@ void loop(void){
                 strcpy(fname, temp.name());
                 if (!ErasedFile(fname))
                 {
-                  Serial.printf("Playing %s\n", temp.name());
-                  Serial.flush();
+                  //Serial.printf("Playing %s\n", temp.name());
+                  //Serial.flush();
                   ShowGIF((char *)temp.name());
                 }
               }
@@ -362,11 +378,11 @@ void loop(void){
          root.close();
       } 
 
-
+scan_connect();
 }
 
 void readFile(fs::FS &fs, const char * path){
-    Serial.printf("Reading file: %s\r\n", path);
+    //Serial.printf("Reading file: %s\r\n", path);
 
     root = fs.open(path);
 
@@ -375,7 +391,7 @@ void readFile(fs::FS &fs, const char * path){
 }
 
 void readFile2(fs::FS &fs, const char * path){
-    Serial.printf("Reading file: %s\r\n", path);
+    //Serial.printf("Reading file: %s\r\n", path);
 
     f = fs.open(path);
 
@@ -388,5 +404,99 @@ void deleteFile(fs::FS &fs, const char * path){
         Serial.println("- file deleted");
     } else {
         Serial.println("- delete failed");
+    }
+}
+
+
+
+void writeString(char add,String data)
+{
+  int _size = data.length();
+  int i;
+  for(i=0;i<_size;i++)
+  {
+    EEPROM.write(add+i,data[i]);
+  }
+  EEPROM.write(add+_size,'\0');   //Add termination null character for String Data
+  EEPROM.commit();
+}
+
+
+String read_String(char add)
+{
+  int i;
+  char data[100]; //Max 100 Bytes
+  int len=0;
+  unsigned char k;
+  k=EEPROM.read(add);
+  while(k != '\0' && len<500)   //Read until null character
+  {    
+    k=EEPROM.read(add+len);
+    data[len]=k;
+    len++;
+  }
+  data[len]='\0';
+  return String(data);
+}
+
+void scan_connect()
+{
+    while (Serial.available() > 0)
+    {
+      //input += (char) Serial.read(); 
+      input =Serial.readString();
+      //command =input.substring(0,input.length()-2);  //both NL and CR
+      command =input.substring(0,input.length());  // No newline
+      if(command == "scan")
+      {
+        Serial.println("scan start");
+        // WiFi.scanNetworks will return the number of networks found
+        int n = WiFi.scanNetworks();
+        Serial.println("scan done");
+        if (n == 0) 
+        {
+          Serial.println("no networks found");
+        } 
+        else 
+        {
+          Serial.print(n);
+          Serial.println(" networks found");
+           for (int i = 0; i < n; ++i) 
+           {
+             // Print SSID and RSSI for each network found
+             Serial.print(i + 1);
+             Serial.print(": ");
+             Serial.print(WiFi.SSID(i));
+             Serial.print(" (");
+             Serial.print(WiFi.RSSI(i));
+             Serial.print(")");
+             Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
+             delay(10);
+           }
+         }
+         Serial.println("");
+         Serial.print("If you want to connect to a new network, enter ssid and passowrd in following format: ssid,password");
+         Serial.println();
+        }
+
+       
+      else
+      {
+        ssid_i = input.substring(0,input.indexOf(','));
+        password_i =   input.substring(input.indexOf(',')+1);
+
+        writeString(0, ssid_i);
+        writeString(101, password_i);
+
+      
+        Serial.print("new ssid: ");
+        Serial.print(ssid_i);
+        Serial.print(" , ");
+        Serial.print("new password: ");
+        Serial.print(password_i);
+        Serial.println();
+         
+        delay(5); 
+      }
     }
 }

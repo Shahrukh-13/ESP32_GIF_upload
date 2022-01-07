@@ -142,8 +142,7 @@ void handleNotFound(){
 
 void * GIFOpenFile(const char *fname, int32_t *pSize)
 {
-  readFile2(LITTLEFS, fname);
-  //f = fs.open(fname);
+  f = LITTLEFS.open(fname);
   if (f)
   {
     *pSize = f.size();
@@ -354,9 +353,8 @@ void loop(void){
     //Serial.println( "SPIFFS-like write file to new path and delete it w/folders" );
 
 
-    
-    readFile(LITTLEFS, szDir);
-      //root = fs.open(dirname);
+   
+      root = LITTLEFS.open(szDir);
       if (root)
       {
          temp = root.openNextFile();
@@ -380,34 +378,6 @@ void loop(void){
 
 scan_connect();
 }
-
-void readFile(fs::FS &fs, const char * path){
-    //Serial.printf("Reading file: %s\r\n", path);
-
-    root = fs.open(path);
-
-
-
-}
-
-void readFile2(fs::FS &fs, const char * path){
-    //Serial.printf("Reading file: %s\r\n", path);
-
-    f = fs.open(path);
-
-}
-
-
-void deleteFile(fs::FS &fs, const char * path){
-    Serial.printf("Deleting file: %s\r\n", path);
-    if(fs.remove(path)){
-        Serial.println("- file deleted");
-    } else {
-        Serial.println("- delete failed");
-    }
-}
-
-
 
 void writeString(char add,String data)
 {

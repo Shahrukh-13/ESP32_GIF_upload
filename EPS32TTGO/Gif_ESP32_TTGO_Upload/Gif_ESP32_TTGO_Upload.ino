@@ -222,6 +222,10 @@ void setup(void){
   
 
   gif.begin(BIG_ENDIAN_PIXELS);
+
+  tft.drawString("Ready", 80, 0, 4);
+
+  display_menu();
 }
 
 void ShowGIF(char *name)
@@ -376,7 +380,7 @@ void loop(void){
          root.close();
       } 
 
-scan_connect();
+scan_connect_del();
 }
 
 void writeString(char add,String data)
@@ -409,7 +413,7 @@ String read_String(char add)
   return String(data);
 }
 
-void scan_connect()
+void scan_connect_del()
 {
     while (Serial.available() > 0)
     {
@@ -445,28 +449,49 @@ void scan_connect()
            }
          }
          Serial.println("");
-         Serial.print("If you want to connect to a new network, enter ssid and passowrd in following format: ssid,password");
+         Serial.print("If you want to connect to a new network, enter 'ssid' and 'passowrd' in following format: ssid,password");
          Serial.println();
         }
 
        
       else
       {
-        ssid_i = input.substring(0,input.indexOf(','));
-        password_i =   input.substring(input.indexOf(',')+1);
-
-        writeString(0, ssid_i);
-        writeString(101, password_i);
-
-      
-        Serial.print("new ssid: ");
-        Serial.print(ssid_i);
-        Serial.print(" , ");
-        Serial.print("new password: ");
-        Serial.print(password_i);
-        Serial.println();
-         
-        delay(5); 
+        if(input.substring(0,input.indexOf(',')) == "delete")
+        {
+          Serial.print("Deleting file: ");
+          Serial.print(input.substring(input.indexOf(',')+1));
+          LITTLEFS.remove(input.substring(input.indexOf(',')+1));
+          Serial.println();
+        }
+        else
+        {
+          ssid_i = input.substring(0,input.indexOf(','));
+          password_i =   input.substring(input.indexOf(',')+1);
+  
+          writeString(0, ssid_i);
+          writeString(101, password_i);
+  
+          Serial.println();
+          Serial.print("new ssid: ");
+          Serial.print(ssid_i);
+          Serial.print(" , ");
+          Serial.print("new password: ");
+          Serial.print(password_i);
+          Serial.println();
+           
+          delay(5); 
+        }
       }
     }
+}
+
+void display_menu()
+{
+  Serial.println();
+  Serial.print("Enter 'scan' to scan for available networks");
+  Serial.println();
+  Serial.print("If you want to connect to a new network, enter 'ssid' and 'passowrd' in following format: ssid,password");
+  Serial.println();
+  Serial.print("If you want to delete a file enter 'delete' and '/FileName' in following format: delete,/FileName");
+  Serial.println();
 }
